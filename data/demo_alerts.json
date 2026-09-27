@@ -1,0 +1,32 @@
+[
+  {
+    "label": "checkout-api: 5xx right after deploy",
+    "service": "checkout-api",
+    "alert": "[PagerDuty] checkout-api 5xx rate 17%, p99 latency 6.8s (SLO 800ms). Started 4 minutes after deploy v2.44.\nLogs: sqlalchemy.exc.TimeoutError: QueuePool limit of size 8 overflow 0 reached, connection timed out, timeout 30\npgbouncer: no more connections allowed (max_client_conn)"
+  },
+  {
+    "label": "ledger-svc: OOMKilled at 02:06 UTC",
+    "service": "ledger-svc",
+    "alert": "[PagerDuty] ledger-svc pod ledger-svc-7c9f8 OOMKilled (exit code 137) at 02:06 UTC, restart count 3, memory limit 4Gi. The ledger-svc helm chart was upgraded yesterday."
+  },
+  {
+    "label": "notif-worker: consumer lag climbing",
+    "service": "notif-worker",
+    "alert": "[Grafana] Kafka consumer group notif-worker lag 184,000 on notifications.v2 and rising.\nConsumer logs: 'Revoking previously assigned partitions' roughly every 5 minutes. notifications.v2.dlq is empty."
+  },
+  {
+    "label": "api.paylane.io: certificate expired",
+    "service": "auth-gateway",
+    "alert": "[Synthetics] https://api.paylane.io failing: x509: certificate has expired or is not yet valid. cert-manager Certificate api-paylane-io shows Ready=False."
+  },
+  {
+    "label": "checkout-api: read-only transaction errors",
+    "service": "checkout-api",
+    "alert": "[PagerDuty] checkout-api: 3.1k errors/min since 14:22 UTC: psycopg2.errors.ReadOnlySqlTransaction: cannot execute INSERT in a read-only transaction"
+  },
+  {
+    "label": "search-svc: Elasticsearch RED (never seen before)",
+    "service": "search-svc",
+    "alert": "[PagerDuty] search-svc: Elasticsearch cluster health RED, 3 unassigned primary shards on index merchants-v7. Merchant search returning 503."
+  }
+]

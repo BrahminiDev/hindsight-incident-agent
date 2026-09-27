@@ -1,0 +1,54 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 420" font-family="Segoe UI, system-ui, sans-serif" font-size="14">
+  <rect width="900" height="420" fill="#0b0f14"/>
+  <defs>
+    <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#7d8a99"/></marker>
+    <marker id="g" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#3ddc97"/></marker>
+  </defs>
+
+  <!-- alert -->
+  <rect x="30" y="60" width="170" height="70" rx="10" fill="#121821" stroke="#243040"/>
+  <text x="115" y="90" fill="#dbe3ec" text-anchor="middle" font-weight="600">Alert fires</text>
+  <text x="115" y="110" fill="#7d8a99" text-anchor="middle" font-size="12">PagerDuty / Grafana text</text>
+
+  <!-- agent -->
+  <rect x="290" y="40" width="260" height="110" rx="10" fill="#121821" stroke="#5eb0ff"/>
+  <text x="420" y="70" fill="#dbe3ec" text-anchor="middle" font-weight="600">Incident agent (FastAPI)</text>
+  <text x="420" y="94" fill="#7d8a99" text-anchor="middle" font-size="12">1. recall similar incidents</text>
+  <text x="420" y="112" fill="#7d8a99" text-anchor="middle" font-size="12">2. build prompt with memory</text>
+  <text x="420" y="130" fill="#7d8a99" text-anchor="middle" font-size="12">3. structured triage (JSON)</text>
+
+  <!-- groq -->
+  <rect x="650" y="60" width="210" height="70" rx="10" fill="#121821" stroke="#243040"/>
+  <text x="755" y="90" fill="#dbe3ec" text-anchor="middle" font-weight="600">Groq LLM</text>
+  <text x="755" y="110" fill="#7d8a99" text-anchor="middle" font-size="12">gpt-oss-120b → qwen3-32b fallback</text>
+
+  <!-- hindsight -->
+  <rect x="290" y="250" width="260" height="130" rx="10" fill="#0f2019" stroke="#3ddc97"/>
+  <text x="420" y="280" fill="#3ddc97" text-anchor="middle" font-weight="700">Hindsight memory bank</text>
+  <text x="420" y="303" fill="#dbe3ec" text-anchor="middle" font-size="12">paylane-oncall</text>
+  <text x="420" y="325" fill="#7d8a99" text-anchor="middle" font-size="12">post-mortems · resolutions · verdicts</text>
+  <text x="420" y="343" fill="#7d8a99" text-anchor="middle" font-size="12">what worked / what did NOT work</text>
+  <text x="420" y="361" fill="#7d8a99" text-anchor="middle" font-size="12">tags: service:* · timestamps</text>
+
+  <!-- engineer -->
+  <rect x="30" y="280" width="170" height="70" rx="10" fill="#121821" stroke="#243040"/>
+  <text x="115" y="310" fill="#dbe3ec" text-anchor="middle" font-weight="600">On-call engineer</text>
+  <text x="115" y="330" fill="#7d8a99" text-anchor="middle" font-size="12">resolves + gives verdict</text>
+
+  <!-- playbook -->
+  <rect x="650" y="280" width="210" height="70" rx="10" fill="#121821" stroke="#243040"/>
+  <text x="755" y="310" fill="#dbe3ec" text-anchor="middle" font-weight="600">Learned playbook</text>
+  <text x="755" y="330" fill="#7d8a99" text-anchor="middle" font-size="12">generated, never hand-written</text>
+
+  <!-- arrows -->
+  <line x1="200" y1="95" x2="286" y2="95" stroke="#7d8a99" stroke-width="2" marker-end="url(#a)"/>
+  <line x1="550" y1="95" x2="646" y2="95" stroke="#7d8a99" stroke-width="2" marker-end="url(#a)"/>
+  <line x1="400" y1="248" x2="400" y2="154" stroke="#3ddc97" stroke-width="2" marker-end="url(#g)"/>
+  <text x="330" y="205" fill="#3ddc97" font-size="12">recall</text>
+  <line x1="200" y1="315" x2="286" y2="315" stroke="#3ddc97" stroke-width="2" marker-end="url(#g)"/>
+  <text x="212" y="305" fill="#3ddc97" font-size="12">retain</text>
+  <line x1="115" y1="130" x2="115" y2="276" stroke="#7d8a99" stroke-width="2" stroke-dasharray="5 4" marker-end="url(#a)"/>
+  <text x="125" y="210" fill="#7d8a99" font-size="12">triage shown</text>
+  <line x1="550" y1="315" x2="646" y2="315" stroke="#3ddc97" stroke-width="2" marker-end="url(#g)"/>
+  <text x="575" y="305" fill="#3ddc97" font-size="12">reflect</text>
+</svg>

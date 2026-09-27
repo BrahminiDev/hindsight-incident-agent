@@ -1,0 +1,220 @@
+[
+  {
+    "id": "INC-2089", "days_ago": 80, "severity": "SEV1", "service": "auth-gateway",
+    "title": "api.paylane.io TLS certificate expired",
+    "alert": "Synthetic check failed: https://api.paylane.io -> x509: certificate has expired or is not yet valid",
+    "logs": [
+      "cert-manager: Certificate default/api-paylane-io is not Ready: Issuing certificate as Secret was previously issued by Issuer.cert-manager.io/letsencrypt-prod",
+      "cert-manager: Error presenting challenge: AccessDenied: User: arn:aws:sts::4421:assumed-role/cert-manager-irsa is not authorized to perform: route53:ChangeResourceRecordSets"
+    ],
+    "root_cause": "A Terraform IAM refactor dropped route53:ChangeResourceRecordSets from the cert-manager IRSA role, so DNS01 renewals had been silently failing for 30 days until the cert expired.",
+    "tried_failed": ["Restarting the cert-manager deployment", "Deleting the Certificate secret (made it worse: ingress served the default fake cert)"],
+    "fix": "Restored the Route53 permission in terraform/iam/cert_manager.tf, then ran `cmctl renew api-paylane-io -n default`. New cert issued in ~2 minutes.",
+    "time_to_mitigate_min": 47,
+    "follow_up": "Added alert on certmanager_certificate_expiration_timestamp_seconds < 14 days."
+  },
+  {
+    "id": "INC-2104", "days_ago": 68, "severity": "SEV2", "service": "checkout-api",
+    "title": "Checkout 5xx: Postgres connection slots exhausted",
+    "alert": "checkout-api 5xx rate 9%, p99 latency 4.1s",
+    "logs": [
+      "psycopg2.OperationalError: FATAL: remaining connection slots are reserved for non-replication superuser connections",
+      "pgbouncer: closing because: no more connections allowed (max_client_conn)"
+    ],
+    "root_cause": "HPA scaled checkout-api to 16 pods; each pod opens a SQLAlchemy pool of 20 (DB_POOL_MAX=20), 320 client connections against pgbouncer max_client_conn=250.",
+    "tried_failed": ["Rolling restart of checkout-api pods (reconnect storm made it worse for ~5 min)"],
+    "fix": "Set DB_POOL_MAX=8 in the checkout-api ConfigMap and rolled the deployment. Errors cleared within 3 minutes.",
+    "time_to_mitigate_min": 38,
+    "follow_up": "Size DB pools as max_client_conn / maxReplicas; documented in runbooks/checkout-db.md."
+  },
+  {
+    "id": "INC-2118", "days_ago": 63, "severity": "SEV2", "service": "notif-worker",
+    "title": "Notification backlog: poison message on notifications.v2",
+    "alert": "Kafka consumer group notif-worker lag 92,000 on notifications.v2 and rising",
+    "logs": [
+      "notif-worker: json.decoder.JSONDecodeError: Expecting value: line 1 column 1 (char 0) at partition=7 offset=18830211",
+      "kubelet: Back-off restarting failed container notif-worker"
+    ],
+    "root_cause": "A producer bug in merchant-portal wrote an empty payload to partition 7. The consumer crashed on it, restarted, re-read the same offset and crash-looped, stalling the whole group.",
+    "tried_failed": ["Restarting consumers (they re-read the same offset and crash again)", "Scaling notif-worker to 12 replicas (no effect, partition 7 still blocked)"],
+    "fix": "Skipped the bad record: `kafka-consumer-groups --bootstrap-server kafka:9092 --group notif-worker --topic notifications.v2:7 --reset-offsets --to-offset 18830212 --execute` with consumers stopped. Lag drained in 11 minutes.",
+    "time_to_mitigate_min": 52,
+    "follow_up": "Add a dead-letter topic notifications.v2.dlq and catch deserialization errors."
+  },
+  {
+    "id": "INC-2133", "days_ago": 60, "severity": "SEV2", "service": "ledger-svc",
+    "title": "ledger-svc OOMKilled during nightly reconciliation",
+    "alert": "ledger-svc pod OOMKilled (exit code 137) at 02:03 UTC, restart count 4",
+    "logs": ["recon: loading 1,840,112 transactions for 2026-07-29", "kernel: Memory cgroup out of memory: Killed process 1 (python)"],
+    "root_cause": "The 02:00 UTC reconciliation job loads the entire previous day of transactions into memory; volume grew past what 2Gi can hold.",
+    "tried_failed": ["Raising the memory limit from 2Gi to 4Gi (it survived one night, then OOMed again the next day)"],
+    "fix": "Set RECON_BATCH_SIZE=5000 so reconciliation streams transactions in batches. Peak memory dropped to ~600Mi.",
+    "time_to_mitigate_min": 95,
+    "follow_up": "RECON_BATCH_SIZE must be set in helm values for ledger-svc; unbounded load is the default."
+  },
+  {
+    "id": "INC-2150", "days_ago": 55, "severity": "SEV2", "service": "redis-cache",
+    "title": "Redis full: checkout session writes rejected",
+    "alert": "checkout-api errors: redis.exceptions.ResponseError on SET",
+    "logs": ["redis.exceptions.ResponseError: OOM command not allowed when used memory > 'maxmemory'"],
+    "root_cause": "maxmemory-policy was noeviction and idempotency keys (idem:*) were written without a TTL, so memory filled up over three weeks.",
+    "tried_failed": ["FLUSHDB on the cache (dropped live checkout sessions, customers were logged out)"],
+    "fix": "`CONFIG SET maxmemory-policy allkeys-lru`, then backfilled a 24h TTL on idem:* keys with a SCAN script.",
+    "time_to_mitigate_min": 29,
+    "follow_up": "Idempotency keys always get EX 86400. Never FLUSHDB the shared cache."
+  },
+  {
+    "id": "INC-2170", "days_ago": 50, "severity": "SEV2", "service": "postgres-primary",
+    "title": "Postgres disk filling with WAL",
+    "alert": "postgres-primary disk usage 91% and climbing ~2%/hour",
+    "logs": ["LOG: archive command failed with exit code 1", "wal-g: AccessDenied: The AWS Access Key Id you provided does not exist in our records"],
+    "root_cause": "Quarterly credential rotation replaced the S3 key but not the wal-g secret, so WAL archiving failed and pg_wal could not be recycled.",
+    "tried_failed": [],
+    "fix": "Updated the wal-g-credentials secret and restarted the archiver sidecar; archive backlog drained and disk fell to 54% in 40 minutes.",
+    "time_to_mitigate_min": 33,
+    "follow_up": "Add wal-g secret to the credential rotation checklist; alert on pg_stat_archiver.failed_count."
+  },
+  {
+    "id": "INC-2185", "days_ago": 48, "severity": "SEV3", "service": "kafka",
+    "title": "Kafka broker disk at 95%",
+    "alert": "kafka-2 disk usage 95%",
+    "logs": ["kafka-log-dirs: audit.events size 1.4TB"],
+    "root_cause": "The audit.events topic was created with retention.ms=-1 (infinite).",
+    "tried_failed": [],
+    "fix": "`kafka-configs --alter --entity-type topics --entity-name audit.events --add-config retention.ms=604800000`; audit data is also shipped to S3, so 7 days local is enough.",
+    "time_to_mitigate_min": 20,
+    "follow_up": "Topic creation now goes through Terraform with required retention."
+  },
+  {
+    "id": "INC-2199", "days_ago": 45, "severity": "SEV1", "service": "payout-scheduler",
+    "title": "Payout batch started twice",
+    "alert": "Two payout-scheduler jobs running concurrently for batch 2026-08-13",
+    "logs": ["payout-scheduler: starting batch 2026-08-13 (job payout-scheduler-29213460)", "payout-scheduler: starting batch 2026-08-13 (job payout-scheduler-29213520)"],
+    "root_cause": "The CronJob had concurrencyPolicy: Allow and the batch ran longer than 1h, so the next schedule started a second run. The ledger idempotency check caught 97% of duplicates; 41 duplicate payouts had to be reversed.",
+    "tried_failed": [],
+    "fix": "Suspended the CronJob, killed the second job, reversed duplicates via ledger-svc /admin/payouts/reverse. Set concurrencyPolicy: Forbid.",
+    "time_to_mitigate_min": 64,
+    "follow_up": "Payout creation is idempotent on (payout_batch_id, merchant_id)."
+  },
+  {
+    "id": "INC-2211", "days_ago": 43, "severity": "SEV2", "service": "checkout-api",
+    "title": "Stripe webhooks rejected in eu-west-1",
+    "alert": "stripe webhook endpoint returning 400, 2.3k failed deliveries",
+    "logs": ["stripe.error.SignatureVerificationError: No signatures found matching the expected signature for payload"],
+    "root_cause": "The Stripe webhook signing secret was rotated but only updated in us-east-1; eu-west-1 still had the old STRIPE_WEBHOOK_SECRET.",
+    "tried_failed": ["Rolling back checkout-api (no effect, it was config not code)"],
+    "fix": "Updated STRIPE_WEBHOOK_SECRET in the eu-west-1 secret store and restarted; replayed failed events from the Stripe dashboard.",
+    "time_to_mitigate_min": 41,
+    "follow_up": "Secrets are now synced across regions by external-secrets."
+  },
+  {
+    "id": "INC-2231", "days_ago": 40, "severity": "SEV2", "service": "checkout-api",
+    "title": "Checkout DB connection exhaustion during campaign traffic",
+    "alert": "checkout-api p99 latency 3.2s, 5xx 6%",
+    "logs": ["pgbouncer: no more connections allowed (max_client_conn)", "sqlalchemy.exc.TimeoutError: QueuePool limit of size 8 overflow 0 reached"],
+    "root_cause": "A marketing campaign pushed HPA to 34 replicas; 34 x 8 = 272 connections, again over pgbouncer max_client_conn=250. Same pattern as INC-2104.",
+    "tried_failed": [],
+    "fix": "Capped HPA maxReplicas at 28 and raised pgbouncer max_client_conn to 400 (default_pool_size unchanged). Recovered in 4 minutes.",
+    "time_to_mitigate_min": 18,
+    "follow_up": "Check pool math whenever HPA limits change."
+  },
+  {
+    "id": "INC-2240", "days_ago": 37, "severity": "SEV3", "service": "checkout-api",
+    "title": "Intermittent DNS lookup failures",
+    "alert": "Sporadic 'getaddrinfo EAI_AGAIN' and 'dial tcp: lookup ... i/o timeout' across services",
+    "logs": ["dial tcp: lookup ledger-svc.default.svc.cluster.local: i/o timeout"],
+    "root_cause": "conntrack race on UDP DNS in CoreDNS under load, amplified by ndots:5 (each lookup tried 5 search domains).",
+    "tried_failed": ["Scaling CoreDNS from 2 to 6 replicas (reduced, did not eliminate)"],
+    "fix": "Deployed NodeLocal DNSCache and set dnsConfig ndots:2 on high-traffic deployments.",
+    "time_to_mitigate_min": 180,
+    "follow_up": null
+  },
+  {
+    "id": "INC-2245", "days_ago": 35, "severity": "SEV1", "service": "auth-gateway",
+    "title": "All API logins failing after IdP key rotation",
+    "alert": "auth-gateway 401 rate 100% for merchant API tokens",
+    "logs": ["auth-gateway: jwt validation failed: kid 'k-2026-08' not found in JWKS"],
+    "root_cause": "The identity provider rotated its signing key; auth-gateway caches JWKS for 24h and does not refetch on unknown kid.",
+    "tried_failed": [],
+    "fix": "`curl -X POST http://auth-gateway:8081/admin/jwks/refresh` on every pod (or rolling restart). Recovered immediately.",
+    "time_to_mitigate_min": 22,
+    "follow_up": "auth-gateway now refetches JWKS on unknown kid (rate-limited)."
+  },
+  {
+    "id": "INC-2255", "days_ago": 32, "severity": "SEV2", "service": "payout-scheduler",
+    "title": "Payout files not delivered to partner bank",
+    "alert": "payout-scheduler: 0 files delivered to bank SFTP in last 2h",
+    "logs": ["paramiko.ssh_exception.SSHException: Host key verification failed for sftp.northbank.example"],
+    "root_cause": "Partner bank rotated their SFTP host key without notice.",
+    "tried_failed": [],
+    "fix": "Verified the new fingerprint with the bank by phone, updated the known_hosts ConfigMap, re-ran delivery.",
+    "time_to_mitigate_min": 75,
+    "follow_up": null
+  },
+  {
+    "id": "INC-2267", "days_ago": 30, "severity": "SEV3", "service": "redis-cache",
+    "title": "Redis latency spike from KEYS *",
+    "alert": "redis-cache command latency p99 850ms",
+    "logs": ["SLOWLOG: KEYS idem:* 1.9s client=10.2.14.7 (ops-admin-script)"],
+    "root_cause": "An ops admin script ran KEYS idem:* on the production cache, blocking the single-threaded server.",
+    "tried_failed": [],
+    "fix": "`CLIENT KILL ADDR 10.2.14.7:*`, then added `rename-command KEYS \"\"` to the Redis config.",
+    "time_to_mitigate_min": 12,
+    "follow_up": "Scripts must use SCAN."
+  },
+  {
+    "id": "INC-2280", "days_ago": 24, "severity": "SEV2", "service": "ledger-svc",
+    "title": "ledger-svc OOMKilled again at 02:00 UTC",
+    "alert": "ledger-svc pod OOMKilled (exit code 137) at 02:04 UTC",
+    "logs": ["recon: loading 2,210,480 transactions for 2026-09-02"],
+    "root_cause": "The helm chart values refactor (PR #812) dropped RECON_BATCH_SIZE, so reconciliation went back to loading the whole day into memory. Regression of INC-2133.",
+    "tried_failed": ["Raising memory limit to 6Gi (on-call did this first before finding INC-2133; it still OOMed)"],
+    "fix": "Restored RECON_BATCH_SIZE=5000 in charts/ledger-svc/values.yaml and re-ran the job manually with `kubectl create job --from=cronjob/ledger-recon recon-manual`.",
+    "time_to_mitigate_min": 70,
+    "follow_up": "ledger-svc now refuses to start reconciliation if RECON_BATCH_SIZE is unset."
+  },
+  {
+    "id": "INC-2291", "days_ago": 21, "severity": "SEV1", "service": "checkout-api",
+    "title": "Checkout outage after deploy v2.38: connections held across Stripe calls",
+    "alert": "checkout-api 5xx 22%, p99 latency 7.4s, started 3 minutes after deploy v2.38",
+    "logs": ["sqlalchemy.exc.TimeoutError: QueuePool limit of size 8 overflow 0 reached, connection timed out, timeout 30", "pgbouncer: no more connections allowed (max_client_conn)"],
+    "root_cause": "v2.38 moved the Stripe PaymentIntent call inside the DB transaction, so every checkout held a Postgres connection for the full Stripe round trip (~1.5s). Pool math was fine; hold time was the problem.",
+    "tried_failed": ["Raising DB_POOL_MAX to 16 (saturated pgbouncer faster, made it worse)", "Rolling restart of pods"],
+    "fix": "Rolled back to v2.37 with `argocd app rollback checkout-api`. Errors cleared in 6 minutes.",
+    "time_to_mitigate_min": 26,
+    "follow_up": "Lint rule: no outbound HTTP inside a DB session. If pool errors start right after a deploy, suspect connection hold time and roll back first."
+  },
+  {
+    "id": "INC-2302", "days_ago": 14, "severity": "SEV2", "service": "notif-worker",
+    "title": "notif-worker rebalance storm",
+    "alert": "Kafka consumer group notif-worker lag 140,000 and rising",
+    "logs": ["notif-worker: Revoking previously assigned partitions", "consumer poll timeout has expired. This means the time between subsequent calls to poll() was longer than the configured max.poll.interval.ms"],
+    "root_cause": "The SMS provider was slow (30s timeouts); a batch of 500 records exceeded max.poll.interval.ms=300000, so consumers were kicked from the group and the group rebalanced every few minutes. Not a poison message this time (DLQ was empty).",
+    "tried_failed": ["Skipping offsets like INC-2118 (wrong diagnosis, lost ~2k notifications that had to be replayed)"],
+    "fix": "Lowered SMS client timeout to 5s and max.poll.records to 50. Lag drained in 25 minutes.",
+    "time_to_mitigate_min": 58,
+    "follow_up": "Check the DLQ and rebalance logs before resetting offsets."
+  },
+  {
+    "id": "INC-2310", "days_ago": 9, "severity": "SEV1", "service": "postgres-primary",
+    "title": "Writes failing after Patroni failover",
+    "alert": "checkout-api errors: cannot execute INSERT in a read-only transaction",
+    "logs": ["psycopg2.errors.ReadOnlySqlTransaction: cannot execute INSERT in a read-only transaction", "patroni: promoted pg-1 to leader"],
+    "root_cause": "Patroni failed over to pg-1 after disk latency on pg-0, but pgbouncer was configured with pg-0's IP instead of the postgres-primary service DNS, so it kept sending writes to the now read-only replica.",
+    "tried_failed": ["Restarting checkout-api (pgbouncer still pointed at old primary)"],
+    "fix": "Pointed pgbouncer at postgres-primary.db.svc (the Patroni-managed endpoint) and ran `RELOAD` on the pgbouncer admin console.",
+    "time_to_mitigate_min": 31,
+    "follow_up": "pgbouncer config is now generated from the service DNS, never IPs."
+  },
+  {
+    "id": "INC-2320", "days_ago": 5, "severity": "SEV3", "service": "checkout-api",
+    "title": "Ingress 502s after enabling trace baggage",
+    "alert": "ingress-nginx 502 rate 3% on /v1/checkout",
+    "logs": ["upstream sent too big header while reading response header from upstream"],
+    "root_cause": "New OpenTelemetry baggage headers pushed response headers over nginx's default 4k proxy buffer.",
+    "tried_failed": [],
+    "fix": "Added annotation nginx.ingress.kubernetes.io/proxy-buffer-size: 16k.",
+    "time_to_mitigate_min": 35,
+    "follow_up": null
+  }
+]

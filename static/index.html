@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Paylane On-call Memory</title>
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <span class="logo">◆</span>
+      <div>
+        <h1>Paylane On-call</h1>
+        <p class="sub">Incident response agent with Hindsight memory</p>
+      </div>
+    </div>
+    <div id="health" class="health">checking…</div>
+  </header>
+
+  <nav class="tabs">
+    <button class="tab active" data-tab="triage">Triage</button>
+    <button class="tab" data-tab="playbook">Learned playbook</button>
+    <button class="tab" data-tab="explore">Memory explorer</button>
+  </nav>
+
+  <main>
+    <!-- TRIAGE -->
+    <section id="tab-triage" class="tab-panel">
+      <div class="panel alert-panel">
+        <h2>Incoming alert</h2>
+        <div id="demo-alerts" class="chips"></div>
+        <label>Service
+          <input id="service" list="services" placeholder="e.g. checkout-api" />
+          <datalist id="services">
+            <option>checkout-api</option><option>ledger-svc</option><option>auth-gateway</option>
+            <option>notif-worker</option><option>payout-scheduler</option><option>postgres-primary</option>
+            <option>redis-cache</option><option>kafka</option><option>search-svc</option>
+          </datalist>
+        </label>
+        <label>Alert text, logs, context
+          <textarea id="alert" rows="7" placeholder="Paste the page, error lines, what changed recently…"></textarea>
+        </label>
+        <div class="actions">
+          <button id="btn-compare" class="primary">Compare: without vs with memory</button>
+          <button id="btn-memory">Triage with memory</button>
+          <button id="btn-nomemory" class="ghost">Without memory</button>
+        </div>
+      </div>
+
+      <div id="results" class="results"></div>
+
+      <div id="resolve" class="panel resolve" hidden>
+        <h2>Close the loop <span class="muted">— teach the agent what actually happened</span></h2>
+        <div class="grid2">
+          <label>Incident ID <input id="r-id" /></label>
+          <label>Time to mitigate (min) <input id="r-ttm" type="number" min="0" /></label>
+        </div>
+        <label>Actual root cause <textarea id="r-cause" rows="2"></textarea></label>
+        <label>Fix that worked <textarea id="r-fix" rows="2"></textarea></label>
+        <fieldset class="verdict">
+          <legend>Was the agent's suggestion right?</legend>
+          <label><input type="radio" name="verdict" value="helped" checked /> Helped</label>
+          <label><input type="radio" name="verdict" value="partial" /> Partially</label>
+          <label><input type="radio" name="verdict" value="wrong" /> Wrong</label>
+        </fieldset>
+        <label>Notes for next time <textarea id="r-notes" rows="2"></textarea></label>
+        <div class="actions"><button id="btn-resolve" class="primary">Resolve &amp; retain to Hindsight</button></div>
+      </div>
+    </section>
+
+    <!-- PLAYBOOK -->
+    <section id="tab-playbook" class="tab-panel" hidden>
+      <div class="panel">
+        <h2>What the team has learned <span class="muted">— Hindsight <code>reflect</code> over every incident</span></h2>
+        <p class="muted">Nobody wrote this document. It is regenerated from memory, so it changes as incidents are resolved.</p>
+        <div class="actions"><button id="btn-playbook" class="primary">Generate playbook</button></div>
+        <div id="playbook" class="markdown"></div>
+      </div>
+    </section>
+
+    <!-- EXPLORER -->
+    <section id="tab-explore" class="tab-panel" hidden>
+      <div class="panel">
+        <h2>Memory explorer <span class="muted">— raw Hindsight <code>recall</code></span></h2>
+        <div class="search-row">
+          <input id="q" placeholder="e.g. what fixes did NOT work for pgbouncer errors?" />
+          <button id="btn-search" class="primary">Recall</button>
+        </div>
+        <div id="explore-results"></div>
+      </div>
+    </section>
+  </main>
+
+  <div id="toast" class="toast" hidden></div>
+  <script src="/static/app.js"></script>
+</body>
+</html>
