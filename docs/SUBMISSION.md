@@ -125,7 +125,7 @@ The official form was not provided, so these are generic answers. **Do not inven
 | LLM with error handling | Problem statement, LLM section | Yes, verified live (incl. rate limits) | `app/llm.py`, tests | none |
 | Realistic data | Problem statement | Yes, 19 incidents | `data/incidents.json` | none |
 | Tests | Your brief | Yes, 24 passing offline + live script | `tests/`, `scripts/verify_live.py` | none |
-| README, .env.example, LICENSE | R2 | Yes | repo root | Fill `[COPYRIGHT HOLDER]`, `[TEAM]` |
+| README, .env.example, LICENSE | R2 | Yes | repo root | none (team credited) |
 | Public GitHub repo | R2 | **No** | Local git only, no remote | Create repo + push |
 | Demo video | R3/R8 | **No** | Script ready | Record, upload, thumbnail |
 | Live demo | R4 | **No** | Runs locally | Rehearse; decide local vs hosted |
