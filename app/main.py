@@ -2,16 +2,18 @@
 
 from __future__ import annotations
 
+import base64
 import json
 import logging
+import secrets
 import threading
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import asdict
 from functools import lru_cache
 from pathlib import Path
 
-from fastapi import FastAPI, HTTPException, Query
-from fastapi.responses import FileResponse
+from fastapi import FastAPI, HTTPException, Query, Request
+from fastapi.responses import FileResponse, Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
@@ -26,6 +28,31 @@ STATIC = ROOT / "static"
 DATA = ROOT / "data"
 
 app = FastAPI(title="Paylane Incident Memory Agent")
+
+OPEN_PATHS = {"/healthz"}  # hosting platform liveness probe; touches no paid service
+
+
+@app.middleware("http")
+async def require_password(request: Request, call_next):
+    """Optional site-wide password, so a public deployment can't be used to drain API quota."""
+    password = settings.app_password
+    if not password or request.url.path in OPEN_PATHS:
+        return await call_next(request)
+    header = request.headers.get("authorization", "")
+    if header.lower().startswith("basic "):
+        try:
+            _, _, given = base64.b64decode(header[6:]).decode("utf-8").partition(":")
+        except (ValueError, UnicodeDecodeError):
+            given = ""
+        if secrets.compare_digest(given.encode(), password.encode()):
+            return await call_next(request)
+    return Response("Password required", status_code=401,
+                    headers={"WWW-Authenticate": 'Basic realm="Paylane On-call", charset="UTF-8"'})
+
+
+@app.get("/healthz")
+def healthz():
+    return {"ok": True}
 
 
 _local = threading.local()

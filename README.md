@@ -101,6 +101,7 @@ cp .env.example .env                               # then fill in the keys
 | `GROQ_API_KEY` | yes | none | |
 | `GROQ_MODEL` | no | `openai/gpt-oss-120b` | Any Groq chat model |
 | `GROQ_FALLBACK_MODEL` | no | `openai/gpt-oss-20b` | Used after two failures of the primary, or at once on a rate limit |
+| `APP_PASSWORD` | on public hosts | none | Every page asks for this password (any username). Set it whenever the app is reachable from the internet |
 
 Keys are read from the environment only. `.env` is git-ignored, and nothing is hard-coded.
 
@@ -119,7 +120,19 @@ Tests run fully offline (Hindsight and Groq are replaced with fakes):
 python -m pytest -q
 ```
 
-They cover incident formatting, JSON parsing and repair, retain, scoped recall, empty recall, a Hindsight outage (502), LLM retry and fallback, missing configuration, input validation, the API endpoints, and an end-to-end *incident → recall → recommend → retain → improved recall* loop.
+They cover incident formatting, JSON parsing and repair, retain, scoped recall, empty recall, a Hindsight outage (502), LLM retry, fallback and rate limits, missing configuration, input validation, the password gate, the API endpoints, and an end-to-end *incident → recall → recommend → retain → improved recall* loop.
+
+To check against the real services (reseeds the bank, then runs cold start → retain → recall):
+
+```bash
+python -m scripts.verify_live
+```
+
+## Deploying (Render)
+
+[`render.yaml`](render.yaml) describes the service. On [Render](https://render.com), choose **New → Blueprint** and select this repository. Render then asks for `HINDSIGHT_API_KEY`, `GROQ_API_KEY` and `APP_PASSWORD`, and stores them itself; they are never committed.
+
+The free plan sleeps after about 15 minutes idle, so the first request after a pause takes up to a minute. Memory lives in Hindsight, not on the server, so nothing is lost when it sleeps. To reset the demo state, run `python -m scripts.seed --reset` from any machine with the same `.env`.
 
 ## Example incident
 

@@ -16,6 +16,9 @@ class Settings:
     groq_api_key: str | None = os.getenv("GROQ_API_KEY") or None
     groq_model: str = os.getenv("GROQ_MODEL", "openai/gpt-oss-120b")
     groq_fallback_model: str = os.getenv("GROQ_FALLBACK_MODEL", "openai/gpt-oss-20b")
+    # When set, every page and API call asks for this password (HTTP Basic auth, any username).
+    # Set it on any public deployment: every request spends the owner's Groq/Hindsight quota.
+    app_password: str | None = os.getenv("APP_PASSWORD") or None
 
     def missing(self) -> list[str]:
         """Names of required settings that are not configured."""

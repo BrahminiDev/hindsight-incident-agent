@@ -224,3 +224,22 @@ def test_rate_limit_switches_model_then_waits_and_retries(monkeypatch):
     assert llm.complete("s", "u") == "{}"
     assert calls == ["primary", "fallback", "primary"]  # no pointless same-model retry
     assert slept == [12.0]  # honoured retry-after
+
+
+def test_password_protects_every_page_when_set(monkeypatch):
+    import base64 as b64
+
+    monkeypatch.setattr(main, "settings", Settings(groq_api_key="g", hindsight_api_key="h", app_password="s3cret"))
+    c = TestClient(main.app)
+    auth = lambda pw: {"Authorization": "Basic " + b64.b64encode(f"judge:{pw}".encode()).decode()}
+
+    assert c.get("/").status_code == 401
+    assert "Basic" in c.get("/").headers["www-authenticate"]  # browser shows its login box
+    assert c.get("/api/demo-alerts", headers=auth("wrong")).status_code == 401
+    assert c.get("/api/demo-alerts", headers=auth("s3cret")).status_code == 200
+    assert c.get("/healthz").status_code == 200  # hosting health check stays open
+
+
+def test_no_password_configured_means_open_access(monkeypatch):
+    monkeypatch.setattr(main, "settings", Settings(groq_api_key="g", hindsight_api_key="h", app_password=None))
+    assert TestClient(main.app).get("/api/demo-alerts").status_code == 200
