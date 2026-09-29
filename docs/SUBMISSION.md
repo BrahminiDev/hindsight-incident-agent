@@ -110,7 +110,7 @@ The official form was not provided, so these are generic answers. **Do not inven
 | One-liner | An incident-response agent that recalls past outages, including the fixes that failed, and learns from every resolved incident using Hindsight memory. |
 | GitHub URL | https://github.com/BrahminiDev/hindsight-incident-agent |
 | Demo video (YouTube) | [VIDEO URL] |
-| Live demo URL | [LIVE DEMO URL, or "run locally, see README"] |
+| Live demo URL | https://hindsight-incident-agent-9db9.onrender.com (no login; first load after idle takes ~1 min) |
 | Articles | [ARTICLE URL per member] |
 | LinkedIn posts | [POST URL per member] |
 | Reddit post | [REDDIT URL] |

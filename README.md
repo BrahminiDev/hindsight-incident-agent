@@ -2,6 +2,8 @@
 
 **An incident-response agent that gets more experienced every time an incident is closed, because its memory lives in [Hindsight](https://github.com/vectorize-io/hindsight).**
 
+**Live demo:** [hindsight-incident-agent-9db9.onrender.com](https://hindsight-incident-agent-9db9.onrender.com). It runs on a free server that sleeps when idle, so the first load can take about a minute.
+
 ![Architecture](docs/architecture.svg)
 
 ## The problem
