@@ -52,9 +52,12 @@ document.querySelectorAll(".tab").forEach((btn) =>
 
 // ---- health + demo alerts ---------------------------------------------------
 api("/api/health").then((h) => {
+  const down = [h.hindsight !== "ok" && "Hindsight", h.llm !== "ok" && "LLM"].filter(Boolean).join(" + ");
   $("health").innerHTML = h.ok
     ? `<span class="ok">● connected</span><br>bank <code>${esc(h.bank_id)}</code> · ${esc(h.model)}`
-    : `<span class="bad">● not configured</span><br>missing ${esc(h.missing.join(", "))}`;
+    : h.missing.length
+      ? `<span class="bad">● not configured</span><br>missing ${esc(h.missing.join(", "))}`
+      : `<span class="bad">● ${esc(down)} unreachable</span><br><span title="${esc(h.hindsight + " | " + h.llm)}">hover for details</span>`;
 }).catch(() => ($("health").innerHTML = '<span class="bad">● backend unreachable</span>'));
 
 api("/api/demo-alerts").then((alerts) => {
@@ -62,13 +65,19 @@ api("/api/demo-alerts").then((alerts) => {
     const chip = document.createElement("button");
     chip.className = "chip";
     chip.textContent = a.label;
-    chip.onclick = () => { $("alert").value = a.alert; $("service").value = a.service; };
+    chip.onclick = () => {
+      $("alert").value = a.alert;
+      $("service").value = a.service;
+      activeDemo = a;
+      document.querySelectorAll(".chip").forEach((c) => c.classList.toggle("active", c === chip));
+    };
     $("demo-alerts").appendChild(chip);
   }
 });
 
 // ---- triage -----------------------------------------------------------------
 let lastTriage = null;
+let activeDemo = null; // demo alert last picked; may carry a scripted resolution
 
 function renderCard(result, withMemory) {
   const t = result.triage;
@@ -144,11 +153,16 @@ $("btn-nomemory").onclick = () => runTriage("no_memory");
 // ---- resolve (the learning loop) ----------------------------------------------
 function prefillResolve() {
   $("resolve").hidden = false;
-  $("r-id").value = `INC-${2400 + Math.floor(Math.random() * 500)}`;
-  $("r-cause").value = lastTriage.result.triage.likely_root_cause;
-  $("r-fix").value = lastTriage.result.triage.next_steps[0] || "";
-  $("r-notes").value = "";
-  $("r-ttm").value = "";
+  $("memory-updated").hidden = true;
+  // A demo alert can ship with what "really" happened, so the learning loop is repeatable on camera.
+  const demo = activeDemo && activeDemo.alert === lastTriage.alert ? activeDemo.demo_resolution : null;
+  $("r-id").value = demo?.incident_id || `INC-${2400 + Math.floor(Math.random() * 500)}`;
+  $("r-cause").value = demo?.root_cause || lastTriage.result.triage.likely_root_cause;
+  $("r-fix").value = demo?.fix || lastTriage.result.triage.next_steps[0] || "";
+  $("r-notes").value = demo?.notes || "";
+  $("r-ttm").value = demo?.time_to_mitigate_min ?? "";
+  const verdict = demo?.suggestion_verdict || "helped";
+  document.querySelector(`input[name="verdict"][value="${verdict}"]`).checked = true;
 }
 
 $("btn-resolve").onclick = async () => {
@@ -156,7 +170,7 @@ $("btn-resolve").onclick = async () => {
   const btn = $("btn-resolve");
   btn.disabled = true;
   try {
-    await api("/api/resolve", {
+    const res = await api("/api/resolve", {
       method: "POST",
       body: JSON.stringify({
         incident_id: $("r-id").value.trim(),
@@ -169,8 +183,11 @@ $("btn-resolve").onclick = async () => {
         notes: $("r-notes").value.trim() || null,
       }),
     });
-    toast(`${$("r-id").value} retained. The agent will remember this next time.`);
     $("resolve").hidden = true;
+    $("mu-title").textContent = `${res.incident_id} retained to bank ${res.bank_id}`;
+    $("mu-content").textContent = res.content;
+    $("memory-updated").hidden = false;
+    $("memory-updated").scrollIntoView({ behavior: "smooth", block: "center" });
   } catch (e) {
     toast(`Retain failed: ${e.message}`);
   } finally {

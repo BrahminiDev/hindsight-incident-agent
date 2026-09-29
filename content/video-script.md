@@ -1,84 +1,86 @@
-# Video script (about 3 min)
+# Team video: script + shot list (target 3:30, hard limit 5:00)
 
-Record at 1080p. Zoom the browser to 125% and close notifications.
-Before recording: `python -m scripts.seed --reset`, then `uvicorn app.main:app`.
+**Setup, done once before recording**
 
-## 1. Intro (0:00–0:30)
-
-**On screen:** your face (webcam), then the app at http://localhost:8000.
-
-> Hi, I'm [NAME]. I built an incident response agent for on-call engineers. When an
-> alert fires, it tells you what's probably wrong, which past incident this looks
-> like, and, most usefully, which fixes *didn't* work last time. It remembers all of
-> that with Hindsight, which is an agent memory system from Vectorize.
-
-## 2. The problem (0:30–1:00)
-
-**On screen:** click the chip **"checkout-api: 5xx right after deploy"**, then **Without memory**.
-
-> Here's a real-looking page: checkout is throwing 5xx, the connection pool is
-> exhausted, and it started four minutes after a deploy. Without memory, the model
-> says what every model says: make the pool bigger and restart the pods. It sounds
-> right. On our system, three weeks ago, that exact advice made the outage worse.
-
-**Point at:** "Increase DB_POOL_MAX", confidence medium, ETA 30–60 min.
-
-## 3. Live demo (1:00–2:30)
-
-**On screen:** click **Compare: without vs with memory**. Wait for both columns.
-
-> Same alert, same model, same prompt. The right side just has Hindsight recall turned on.
-> It found INC-2291 from three weeks ago: same errors, right after a deploy. The fix
-> was a rollback in six minutes. And look at "Do not repeat": raising the pool made
-> it worse, and restarting didn't help.
-
-**On screen:** expand **"What Hindsight recalled"**.
-
-> These are the raw memories recall returned. Each one has a real date and a service tag.
-> I recall scoped to the service first, then across the whole bank.
-
-**On screen:** optionally show `app/memory.py`, the `recall()` method, for 5 seconds.
-
-**On screen:** scroll to **Close the loop**. Set the verdict to *Partially*, and put in notes:
-"Rollback worked, but root cause was an N+1 query from eager loading in v2.44." Click **Resolve & retain**.
-
-> Now I close the incident and tell it what really happened, including whether its own
-> suggestion was right. That goes straight back into Hindsight with `retain`.
-
-**On screen:** run **Compare** again on the same alert.
-
-> Run it again, and now it cites the incident I just closed. It learned from one resolution.
-
-**On screen:** **Learned playbook** tab → **Generate playbook**.
-
-> Last thing: this playbook was written by Hindsight's `reflect` over every incident.
-> Recurring failures per service, proven fixes, and the traps. Nobody wrote this document by hand.
-
-**Optional (if time):** the **"search-svc: Elasticsearch RED"** chip, which has no history. The agent says so
-and doesn't make anything up.
-
-## 4. Takeaway (2:30–3:00)
-
-**On screen:** back to your face, or the compare view.
-
-> What surprised me: the most valuable memory wasn't the fixes, it was the *failed*
-> fixes. A stateless model will repeat the same wrong advice forever. With memory, a
-> wrong answer is a one-time cost. Links to the code and Hindsight are in the description.
+1. Record at 1920×1080 minimum (OBS: Settings → Video → Base and Output 1920x1080). Browser zoom 125%, notifications off, only one tab open.
+2. `python -m scripts.seed --reset`. This rebuilds the bank so INC-2331 does **not** exist yet, which the cold-start moment depends on.
+3. `uvicorn app.main:app`, then open http://localhost:8000. Check the top-right shows **● connected**.
+4. Do one full dry run, then run `seed --reset` again before the real take.
 
 ---
 
-## Titles
+## 1. Intro (0:00–0:30)
 
-1. My AI on-call agent remembers the fixes that failed
+| Screen | Narration |
+|---|---|
+| Webcam (optional), then the app | "Hi, I'm [NAME], and with [TEAMMATES] I built an incident response agent for on-call engineers. When an alert fires, it tells you what's probably wrong, which past incident this looks like, and which fixes *didn't* work last time. Its memory is Hindsight, from Vectorize, and it gets better every time an incident is closed." |
+
+## 2. The problem (0:30–1:00)
+
+| Screen | Narration |
+|---|---|
+| Click chip **checkout-api: 5xx right after deploy**, then **Without memory** | "Here's a realistic page: checkout is throwing 5xx, the DB pool is exhausted, and it started four minutes after a deploy." |
+| Point at the next steps | "Without memory, the model reads it the obvious way: the pool is too small, or there's a connection leak. And look, its do-not-repeat list is empty. It has no history to learn from." |
+
+## 3. Live demo (1:00–3:00)
+
+**3a. Same alert with memory (1:00–1:40)**
+
+| Screen | Narration |
+|---|---|
+| Click **Compare: without vs with memory** and wait for both columns | "Same alert, same model, same prompt. The right side has Hindsight recall turned on." |
+| Point at **Similar past incidents** / **Do not repeat** | "It found INC-2291 from three weeks ago: same errors, right after a deploy, caused by connections being held too long. And under do-not-repeat: raising DB_POOL_MAX made it worse, and a rolling restart made an earlier one worse." |
+| Expand **What Hindsight recalled** | "These are the raw memories recall returned, each with a date and a service tag." |
+
+**3b. Learning from zero (1:40–2:45)**, the most important moment
+
+| Screen | Narration |
+|---|---|
+| Click **search-svc #1: Elasticsearch RED (no history)** → **Compare** | "Now something the agent has never seen: Elasticsearch going red. Memory has nothing, and it says so. It doesn't make up an incident ID." |
+| Scroll to **Close the loop**. The form is pre-filled with INC-2331 and verdict *Partially* | "We fixed it: a reindex left the old index behind, the disk hit flood-stage, and restarting the node didn't help. I'll mark the agent's advice as only partially right." |
+| Click **Resolve & retain to Hindsight**. Hold on the **Memory updated** panel | "That's a Hindsight retain. This is exactly what it just learned." |
+| Click **search-svc #2: RED again after a reindex** → **Compare** | "A few weeks later it happens again, on a different index." |
+| Point at INC-2331 in the memory column | "This time it recalls INC-2331, goes straight to the leftover index and disk usage, and warns that restarting the node didn't help. It learned that from one resolution." |
+
+**3c. The playbook (2:45–3:00)**
+
+| Screen | Narration |
+|---|---|
+| **Learned playbook** tab → **Generate playbook** | "Last thing: Hindsight's reflect writes a playbook over every incident. Nobody maintains this by hand, and the lesson we just taught it is already in there." |
+
+## 4. Takeaway (3:00–3:30)
+
+| Screen | Narration |
+|---|---|
+| Back to the compare view, or webcam | "What surprised me was that the most valuable memory wasn't the fixes, it was the *failed* fixes. A stateless model repeats the same wrong advice forever. With memory, a wrong answer is a one-time cost. The code and Hindsight links are in the description." |
+
+---
+
+## Shot list (checklist while recording)
+
+1. [ ] App home, **● connected** visible
+2. [ ] Without-memory card for checkout (generic advice)
+3. [ ] Compare view, both columns; zoom on INC-2291 and **Do not repeat**
+4. [ ] "What Hindsight recalled" expanded
+5. [ ] search-svc #1: memory column shows nothing recalled
+6. [ ] Close-the-loop form → **Memory updated** panel (hold 3 seconds)
+7. [ ] search-svc #2: memory column cites INC-2331
+8. [ ] Playbook generated
+9. [ ] Optional 5-second cut: `app/memory.py`, `recall()` in the editor
+
+If a live LLM answer comes out weak on a take, re-run it. Don't narrate claims that aren't on screen.
+
+## YouTube titles
+
+1. My on-call AI remembers the fixes that failed
 2. Same LLM, same alert: memory changed the fix
-3. I built an SRE agent that learns from every outage
+3. Watch an incident agent learn from one outage
 4. Stop your AI from repeating last month's outage
-5. Giving an incident agent long-term memory (Hindsight demo)
+5. Giving an SRE agent long-term memory with Hindsight
 
-## Thumbnail prompt (Nano Banana, attach a team photo)
+## Description template
 
-> Generate a viral YouTube thumbnail, 16:9. Left half: a red, chaotic dashboard with "5xx 17%"
-> and a robot giving a thumbs-up next to the words "RESTART PODS?" crossed out in red. Right half:
-> calm green terminal showing "INC-2291 · 3 weeks ago · ROLL BACK". The person from the attached
-> photo in the center looking surprised. Big bold text at top: "IT REMEMBERED". Dark background,
-> high contrast, clean.
+> An incident-response agent that recalls past outages, including the fixes that didn't work, using Hindsight agent memory, and learns from every resolved incident.
+> Code: [GITHUB URL]
+> Article: [ARTICLE URL]
+> Hindsight: https://github.com/vectorize-io/hindsight

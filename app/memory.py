@@ -24,6 +24,33 @@ BANK_MISSION = (
     "how long mitigation took, and any follow-up actions. Prefer precise, operational facts."
 )
 
+MAX_RECALLED = 14      # memories passed to the LLM (Groq free tier: 8k tokens/min)
+MAX_PER_INCIDENT = 3   # facts from any single incident document
+MAX_UNSOURCED = 2      # consolidated observations, which carry no document_id
+
+
+class MemoryUnavailable(RuntimeError):
+    """Hindsight could not be reached or rejected the request."""
+
+
+def _guard(op: str):
+    """Turn any client/transport error from a Hindsight call into MemoryUnavailable."""
+
+    def wrap(fn):
+        def inner(*args, **kwargs):
+            try:
+                return fn(*args, **kwargs)
+            except MemoryUnavailable:
+                raise
+            except Exception as e:  # the generated client raises many types (HTTP, timeout, validation)
+                raise MemoryUnavailable(f"Hindsight {op} failed: {e}") from e
+
+        inner.__name__, inner.__doc__ = fn.__name__, fn.__doc__
+        return inner
+
+    return wrap
+
+
 RETAIN_INSTRUCTIONS = (
     "Keep exact error messages, metric names, versions, config keys and commands verbatim. "
     "Always record whether a remediation step worked or failed."
@@ -53,6 +80,7 @@ class IncidentMemory:
     def connect(cls, base_url: str, api_key: str | None, bank_id: str) -> "IncidentMemory":
         return cls(Hindsight(base_url=base_url, api_key=api_key, timeout=120.0), bank_id)
 
+    @_guard("create_bank")
     def ensure_bank(self) -> None:
         """Create (or update) the bank with an incident-focused mission."""
         self.client.create_bank(
@@ -65,6 +93,7 @@ class IncidentMemory:
 
     # ---- retain -------------------------------------------------------------
 
+    @_guard("retain")
     def retain_incident(self, incident: dict[str, Any], *, retain_async: bool = False) -> None:
         """Store a past incident / post-mortem as one document."""
         self.client.retain(
@@ -78,8 +107,12 @@ class IncidentMemory:
             retain_async=retain_async,
         )
 
-    def retain_resolution(self, resolution: dict[str, Any]) -> None:
-        """Close the loop: store what really happened and whether the agent's advice helped."""
+    @_guard("retain")
+    def retain_resolution(self, resolution: dict[str, Any]) -> str:
+        """Close the loop: store what really happened and whether the agent's advice helped.
+
+        Returns the exact text retained, so the UI can show what the agent just learned.
+        """
         verdict = {
             "helped": "The agent's triage suggestion WORKED and led to the fix.",
             "partial": "The agent's triage suggestion was PARTIALLY right.",
@@ -97,26 +130,34 @@ class IncidentMemory:
             lines.append(verdict)
         if resolution.get("notes"):
             lines.append(f"Engineer notes: {resolution['notes']}")
+        content = "\n".join(lines)
         self.client.retain(
             bank_id=self.bank_id,
-            content="\n".join(lines),
+            content=content,
             timestamp=datetime.now(timezone.utc),
             context=f"resolution of {resolution['incident_id']}",
             document_id=resolution["incident_id"],
             metadata={"service": resolution["service"]},
             tags=[f"service:{resolution['service']}", "kind:resolution"],
         )
+        return content
 
     # ---- recall / reflect ---------------------------------------------------
 
+    @_guard("recall")
     def recall(self, query: str, service: str | None = None, max_tokens: int = 3000) -> list[Memory]:
         """Recall memories relevant to an alert.
 
         If the service is known we try a service-scoped recall first, then fall back to
         the whole bank: cross-service incidents (a Postgres failover showing up as a
         checkout outage) are exactly the ones humans forget.
+
+        Results are capped per source so one incident (or its consolidated observations)
+        can't crowd out the rest: in live testing, near-duplicate observations about
+        INC-2104/INC-2231 pushed the deploy-regression precedent INC-2291 out of the prompt.
         """
         seen: dict[str, Memory] = {}
+        per_source: dict[str, int] = {}
         scopes: list[list[str] | None] = [[f"service:{service}"], None] if service else [None]
         for tags in scopes:
             resp = self.client.recall(
@@ -130,6 +171,10 @@ class IncidentMemory:
             for r in resp.results or []:
                 if r.id in seen:
                     continue
+                source = r.document_id or f"({r.type})"
+                if per_source.get(source, 0) >= (MAX_PER_INCIDENT if r.document_id else MAX_UNSOURCED):
+                    continue
+                per_source[source] = per_source.get(source, 0) + 1
                 seen[r.id] = Memory(
                     id=r.id,
                     text=r.text,
@@ -138,8 +183,14 @@ class IncidentMemory:
                     document_id=r.document_id,
                     tags=list(r.tags or []),
                 )
-        return list(seen.values())[:14]
+        return list(seen.values())[:MAX_RECALLED]
 
+    @_guard("connection check")
+    def ping(self) -> None:
+        """Cheap authenticated call, so the UI's status reflects reality, not just config."""
+        self.client.list_memories(bank_id=self.bank_id, limit=1)
+
+    @_guard("reflect")
     def playbook(self) -> str:
         """Ask Hindsight to reason over everything it has seen so far."""
         resp = self.client.reflect(

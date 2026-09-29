@@ -5,6 +5,24 @@
     "alert": "[PagerDuty] checkout-api 5xx rate 17%, p99 latency 6.8s (SLO 800ms). Started 4 minutes after deploy v2.44.\nLogs: sqlalchemy.exc.TimeoutError: QueuePool limit of size 8 overflow 0 reached, connection timed out, timeout 30\npgbouncer: no more connections allowed (max_client_conn)"
   },
   {
+    "label": "search-svc #1: Elasticsearch RED (no history)",
+    "service": "search-svc",
+    "alert": "[PagerDuty] search-svc: Elasticsearch cluster health RED, 3 unassigned primary shards on index merchants-v7. Merchant search returning 503.",
+    "demo_resolution": {
+      "incident_id": "INC-2331",
+      "root_cause": "The nightly merchants-v7 reindex left the old merchants-v6 index (412 GB) in place. es-data-2 crossed the 95% flood-stage disk watermark (cluster.routing.allocation.disk.watermark.flood_stage), so new primaries could not be allocated.",
+      "fix": "Confirmed the merchants alias points at merchants-v7, ran DELETE /merchants-v6, then POST /_cluster/reroute?retry_failed=true. Cluster GREEN in 9 minutes.",
+      "time_to_mitigate_min": 34,
+      "suggestion_verdict": "partial",
+      "notes": "Restarting es-data-2 did NOT help: shards stayed unassigned because the disk was still full. After any reindex, check GET _cat/allocation?v for disk.percent and delete the previous index version first."
+    }
+  },
+  {
+    "label": "search-svc #2: RED again after a reindex",
+    "service": "search-svc",
+    "alert": "[PagerDuty] search-svc: Elasticsearch cluster health RED since 03:12 UTC, 2 unassigned primary shards on index merchants-v8. Started after last night's merchants reindex job.\nGET _cluster/allocation/explain: \"cannot allocate because allocation is not permitted to any of the nodes\"\nMerchant search returning 503."
+  },
+  {
     "label": "ledger-svc: OOMKilled at 02:06 UTC",
     "service": "ledger-svc",
     "alert": "[PagerDuty] ledger-svc pod ledger-svc-7c9f8 OOMKilled (exit code 137) at 02:06 UTC, restart count 3, memory limit 4Gi. The ledger-svc helm chart was upgraded yesterday."
@@ -23,10 +41,5 @@
     "label": "checkout-api: read-only transaction errors",
     "service": "checkout-api",
     "alert": "[PagerDuty] checkout-api: 3.1k errors/min since 14:22 UTC: psycopg2.errors.ReadOnlySqlTransaction: cannot execute INSERT in a read-only transaction"
-  },
-  {
-    "label": "search-svc: Elasticsearch RED (never seen before)",
-    "service": "search-svc",
-    "alert": "[PagerDuty] search-svc: Elasticsearch cluster health RED, 3 unassigned primary shards on index merchants-v7. Merchant search returning 503."
   }
 ]

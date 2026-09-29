@@ -22,7 +22,10 @@ postgres-primary, redis-cache, kafka). A new alert just fired. Produce a triage.
 Rules:
 - If PAST INCIDENT MEMORY is provided, use it. Cite incident IDs (e.g. INC-2291) for every
   claim that comes from memory. Say how long ago it happened when that is known.
-- Explicitly warn against remediation steps that memory says did NOT work before.
+- Recall can return unrelated incidents. Use a memory only if it matches this alert's service,
+  error messages or failure mode; silently ignore the rest.
+- Explicitly warn against remediation steps that memory says did NOT work before, for a
+  similar failure. Leave "avoid" empty rather than listing lessons from unrelated incidents.
 - If memory says a previous agent suggestion was wrong, do not repeat it.
 - If there is no relevant memory, say so plainly and give sound generic steps. Never invent
   incident IDs, dates, or history.
@@ -35,7 +38,7 @@ Respond with ONLY a JSON object with these keys:
   "likely_root_cause": "string",
   "confidence": "low" | "medium" | "high",
   "similar_incidents": [{"id": "INC-xxxx", "when": "e.g. 3 weeks ago", "why_similar": "string"}],
-  "next_steps": ["ordered, concrete actions"],
+  "next_steps": ["3 to 6 ordered, concrete actions; the first is the fastest diagnostic or mitigation"],
   "avoid": ["steps that failed before, with incident ID"],
   "estimated_time_to_mitigate": "string"
 }"""

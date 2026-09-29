@@ -15,7 +15,7 @@ class Settings:
     bank_id: str = os.getenv("HINDSIGHT_BANK_ID", "paylane-oncall")
     groq_api_key: str | None = os.getenv("GROQ_API_KEY") or None
     groq_model: str = os.getenv("GROQ_MODEL", "openai/gpt-oss-120b")
-    groq_fallback_model: str = os.getenv("GROQ_FALLBACK_MODEL", "qwen/qwen3-32b")
+    groq_fallback_model: str = os.getenv("GROQ_FALLBACK_MODEL", "openai/gpt-oss-20b")
 
     def missing(self) -> list[str]:
         """Names of required settings that are not configured."""

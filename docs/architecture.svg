@@ -20,7 +20,7 @@
   <!-- groq -->
   <rect x="650" y="60" width="210" height="70" rx="10" fill="#121821" stroke="#243040"/>
   <text x="755" y="90" fill="#dbe3ec" text-anchor="middle" font-weight="600">Groq LLM</text>
-  <text x="755" y="110" fill="#7d8a99" text-anchor="middle" font-size="12">gpt-oss-120b → qwen3-32b fallback</text>
+  <text x="755" y="110" fill="#7d8a99" text-anchor="middle" font-size="12">gpt-oss-120b → gpt-oss-20b fallback</text>
 
   <!-- hindsight -->
   <rect x="290" y="250" width="260" height="130" rx="10" fill="#0f2019" stroke="#3ddc97"/>
