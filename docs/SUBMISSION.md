@@ -105,7 +105,7 @@ The official form was not provided, so these are generic answers. **Do not inven
 | Likely field | Answer |
 |---|---|
 | Team name | [TEAM NAME] |
-| Members | [MEMBER NAMES + EMAILS] |
+| Members | Brahmini sai Bandi, Akshitha Yaddu, Neha Jetta, Shravani Thouta, Kasarla Adithya, V Arjun (emails: [NEEDS USER INPUT]) |
 | Project name | Paylane On-call: incident agent with Hindsight memory |
 | One-liner | An incident-response agent that recalls past outages, including the fixes that failed, and learns from every resolved incident using Hindsight memory. |
 | GitHub URL | https://github.com/BrahminiDev/hindsight-incident-agent |

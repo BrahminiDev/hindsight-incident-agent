@@ -203,7 +203,7 @@ content/            article, social post, video script
 
 ## Credits
 
-Built by [TEAM / MEMBER NAMES]. Memory by [Hindsight](https://github.com/vectorize-io/hindsight) from Vectorize, inference by [Groq](https://groq.com/).
+Built by Brahmini sai Bandi, Akshitha Yaddu, Neha Jetta, Shravani Thouta, Kasarla Adithya and V Arjun. Memory by [Hindsight](https://github.com/vectorize-io/hindsight) from Vectorize, inference by [Groq](https://groq.com/).
 
 ## License
 
