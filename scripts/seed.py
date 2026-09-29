@@ -54,6 +54,7 @@ def main() -> None:
         mem.retain_incident(inc)
         print(f"[{i:2}/{len(incidents)}] retained {inc['id']} {inc['service']:<17} {inc['title']}")
     print(f"\nDone. {len(incidents)} incidents in bank '{settings.bank_id}'.")
+    mem.client.close()  # otherwise aiohttp prints "Unclosed client session" on exit
 
 
 if __name__ == "__main__":

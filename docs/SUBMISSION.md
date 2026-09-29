@@ -92,7 +92,7 @@ Suggested captions:
 - **Type:** link post → [ARTICLE URL]
 - **Title:** My incident agent remembers the fixes that made things worse
 - **First comment:**
-  > I built an on-call triage agent whose memory (Hindsight) stores failed remediations, not just resolutions. When an incident is closed, the engineer grades the agent's advice, and that grade is retained too. The write-up covers the bank design, two-pass recall, and what I'd do differently. The incident history is synthetic, so no MTTR claims. Code: [GITHUB URL]
+  > I built an on-call triage agent whose memory (Hindsight) stores failed remediations, not just resolutions. When an incident is closed, the engineer grades the agent's advice, and that grade is retained too. The write-up covers the bank design, two-pass recall, and what I'd do differently. The incident history is synthetic, so no MTTR claims. Code: https://github.com/BrahminiDev/hindsight-incident-agent
 
 ## 7. Thumbnail prompt (Nano Banana, attach a team photo)
 
@@ -108,7 +108,7 @@ The official form was not provided, so these are generic answers. **Do not inven
 | Members | [MEMBER NAMES + EMAILS] |
 | Project name | Paylane On-call: incident agent with Hindsight memory |
 | One-liner | An incident-response agent that recalls past outages, including the fixes that failed, and learns from every resolved incident using Hindsight memory. |
-| GitHub URL | [GITHUB URL] |
+| GitHub URL | https://github.com/BrahminiDev/hindsight-incident-agent |
 | Demo video (YouTube) | [VIDEO URL] |
 | Live demo URL | [LIVE DEMO URL, or "run locally, see README"] |
 | Articles | [ARTICLE URL per member] |

@@ -8,6 +8,9 @@ So I built an incident response agent whose most important feature isn't what it
 
 An alert fires (PagerDuty text, a Grafana panel, a few log lines) and the agent returns a structured triage. That means severity, likely root cause, similar past incidents with dates, ordered next steps, and an explicit **do-not-repeat** list.
 
+![The ops console with an incoming checkout-api alert](https://raw.githubusercontent.com/BrahminiDev/hindsight-incident-agent/main/screenshots/01-incoming-alert.png)
+*The ops console: paste an alert, or pick a demo incident.*
+
 The stack is small:
 
 - **FastAPI**, with endpoints for triage, resolve, playbook and raw recall.
@@ -19,7 +22,7 @@ I don't run a vector database, an embedding pipeline or any chunking code. The w
 
 The history is 19 post-mortems for a payments platform I call Paylane: checkout, ledger, auth, Kafka, Postgres, Redis. They're written to be internally consistent, down to pool sizes, error strings and replica counts.
 
-![Architecture: alert → recall → LLM → triage → resolve → retain](../docs/architecture.svg)
+![Architecture: alert → recall → LLM → triage → resolve → retain](https://raw.githubusercontent.com/BrahminiDev/hindsight-incident-agent/main/docs/architecture.svg)
 
 ## Failed fixes are first-class data
 
@@ -94,9 +97,18 @@ The system prompt carries one rule that only makes sense with memory: *if memory
 
 **Learning from zero.** Elasticsearch has no history in the bank. An alert says the cluster is RED with unassigned primaries on `merchants-v7`. The agent says plainly that nothing relevant was recalled and gives generic shard-allocation steps. It doesn't invent an incident ID.
 
+![First Elasticsearch alert: no similar past incidents in either column](https://raw.githubusercontent.com/BrahminiDev/hindsight-incident-agent/main/screenshots/03-cold-start-no-memory.png)
+*A failure type the agent has never seen: no similar incidents, generic steps, nothing invented.*
+
 I resolve it as INC-2331: a reindex left the old index behind, a data node crossed the flood-stage disk watermark, and restarting the node didn't help. I mark the agent's advice *partial*.
 
+![Close-the-loop form with INC-2331 root cause, fix, verdict and notes](https://raw.githubusercontent.com/BrahminiDev/hindsight-incident-agent/main/screenshots/04-close-the-loop.png)
+*Closing the loop: the real root cause, the fix, and a verdict on the agent's own advice go back into Hindsight.*
+
 Later a second alert fires: RED again, a different index, "started after last night's reindex job". This time recall returns INC-2331. The triage cites it, starts with `GET _cat/allocation?v` to check disk usage, suggests deleting the leftover previous index, and warns that restarting a node without freeing disk space didn't help last time.
+
+![Second Elasticsearch alert: the memory column cites INC-2331](https://raw.githubusercontent.com/BrahminiDev/hindsight-incident-agent/main/screenshots/05-recall-after-learning.png)
+*One resolution later: the memory column cites INC-2331, with higher confidence and a shorter ETA.*
 
 **Deep history.** The **Compare** button runs the same alert through the same model twice in parallel, once without memory and once with Hindsight recall:
 
@@ -106,6 +118,9 @@ Later a second alert fires: RED again, a different index, "started after last ni
 Without memory, the model reads a pool error the obvious way: pool too small or a connection leak. It starts by inspecting pgbouncer, and its do-not-repeat list is empty, because it has nothing to learn from.
 
 With memory, it recalls INC-2291 (identical errors three weeks earlier, right after a deploy) alongside two older pool-exhaustion incidents. The root cause shifts to what INC-2291 taught: the new release holds connections longer, for example outbound calls inside DB transactions. The do-not-repeat list reads "increasing DB_POOL_MAX (made exhaustion worse in INC-2291)" and "rolling restart of checkout-api pods (worsened INC-2104)".
+
+![Compare view: without memory on the left, Hindsight memory citing INC-2104, INC-2231 and INC-2291 on the right](https://raw.githubusercontent.com/BrahminiDev/hindsight-incident-agent/main/screenshots/02-checkout-compare.png)
+*Same model, same alert. The only difference is what Hindsight recalled.*
 
 The first version of this didn't cite INC-2291 at all. Recall returned it, but near-duplicate facts about the two older incidents filled every slot in the prompt. Capping each incident at three facts fixed it. Retrieval that is technically correct can still starve the model of the one precedent that matters.
 
@@ -125,4 +140,4 @@ The **Learned playbook** tab calls `reflect`. It asks Hindsight to reason over t
 
 The model will get swapped out many times. The memory bank, with every outage and every bad call in it, is the part worth protecting. That's why I think [agent memory](https://vectorize.io/what-is-agent-memory) is the product here, and the LLM is the replaceable part.
 
-*The code, incident dataset and offline test suite are on GitHub: [GITHUB URL].*
+*The code, incident dataset and offline test suite are on GitHub: [github.com/BrahminiDev/hindsight-incident-agent](https://github.com/BrahminiDev/hindsight-incident-agent).*

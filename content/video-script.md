@@ -81,6 +81,6 @@ If a live LLM answer comes out weak on a take, re-run it. Don't narrate claims t
 ## Description template
 
 > An incident-response agent that recalls past outages, including the fixes that didn't work, using Hindsight agent memory, and learns from every resolved incident.
-> Code: [GITHUB URL]
+> Code: https://github.com/BrahminiDev/hindsight-incident-agent
 > Article: [ARTICLE URL]
 > Hindsight: https://github.com/vectorize-io/hindsight

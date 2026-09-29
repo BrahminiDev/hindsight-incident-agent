@@ -32,6 +32,14 @@ Observed in live runs on 2026-09-29 for the flagship alert, *checkout-api: 5xx r
 
 For the cold-start pair, the first Elasticsearch alert recalls nothing relevant and gets generic steps. After INC-2331 is resolved and retained, the second alert recalls it, cites it, and starts with `GET _cat/allocation?v` to check disk usage. The full evidence log is in [`docs/live-verification.md`](docs/live-verification.md).
 
+## Screenshots (live run)
+
+| 1. A failure type it has never seen | 2. Engineer closes the loop |
+|---|---|
+| ![Cold start: no similar incidents](screenshots/03-cold-start-no-memory.png) | ![Close the loop form](screenshots/04-close-the-loop.png) |
+| **3. Next similar alert: recalls INC-2331** | **4. Deep history: same model, with and without memory** |
+| ![Recall after learning](screenshots/05-recall-after-learning.png) | ![Checkout compare](screenshots/02-checkout-compare.png) |
+
 ## How Hindsight is used
 
 All Hindsight calls are in [`app/memory.py`](app/memory.py) and use the official [`hindsight-client`](https://pypi.org/project/hindsight-client/) Python SDK (verified against v0.10.1).

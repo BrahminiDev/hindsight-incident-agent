@@ -17,7 +17,7 @@ After: "matches INC-2291. Do NOT raise DB_POOL_MAX, it made that outage worse."
 
 A new failure type? It admits it has no history. One resolution later, it recalls it.
 
-Code: [GITHUB URL]
+Code: https://github.com/BrahminiDev/hindsight-incident-agent
 
 #AIAgents #AgentMemory #Hindsight #LLM
 
